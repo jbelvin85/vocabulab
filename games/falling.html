@@ -75,6 +75,36 @@
         display: none;
       }
     }
+    .type-display {
+      min-height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 1rem;
+      background: #fff;
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+    }
+    .virtual-keyboard {
+      display: grid;
+      gap: 6px;
+      grid-template-columns: repeat(10, 1fr);
+      margin-top: 10px;
+    }
+    .vk-row { grid-column: 1 / -1; display:flex; gap:6px; justify-content:center; }
+    .key {
+      background: #f3f4f6;
+      border-radius: 6px;
+      padding: 8px 10px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid rgba(0,0,0,0.06);
+      font-weight: 600;
+    }
+    .key.key-wide { flex: 0 0 80px; }
+    .key.key-enter { flex: 0 0 90px; }
+    .key.key-back { flex: 0 0 80px; }
+    .key.key-urgent { background: #fde68a; box-shadow: 0 0 0 3px rgba(253,230,138,0.18); }
   </style>
 </head>
 <body>
@@ -116,7 +146,23 @@
       </div>
     </div>
     <div class="card" style="margin-top:12px"><div class="card-body">
-      <input id="typebox" type="text" placeholder="Type the falling word..." autocomplete="off" spellcheck="false">
+      <div id="typedDisplay" class="type-display" tabindex="0" aria-label="Typed word" role="textbox"></div>
+      <div class="virtual-keyboard" id="virtualKeyboard" aria-hidden="false">
+        <div class="vk-row" id="vkRow1">
+          <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+        </div>
+        <div class="vk-row" id="vkRow2">
+          <div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div><div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div>
+        </div>
+        <div class="vk-row" id="vkRow3">
+          <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div>
+        </div>
+        <div class="vk-row" style="margin-top:8px;">
+          <div class="key key-back">⌫</div>
+          <div class="key key-wide">SPACE</div>
+          <div class="key key-enter">↵</div>
+        </div>
+      </div>
       <div class="small">Hit Enter to submit. Words speed up as you score. Missed words cost a life.</div>
     </div></div>
   </div>
@@ -228,7 +274,9 @@
   }
 
   const field = document.getElementById("playfield");
-  const box = document.getElementById("typebox");
+  const typedDisplay = document.getElementById("typedDisplay");
+  const virtualKeyboard = document.getElementById("virtualKeyboard");
+  let currentTyped = "";
   const livesEl = document.getElementById("lives");
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
@@ -283,6 +331,8 @@
     field.appendChild(element);
     const velocity = baseGravity + (speedMultiplier - 1) * 0.2 + Math.random() * 0.12;
     active.set(id, { word, el: element, y: -30, speed: velocity });
+    // Update urgent key highlight when new word spawns
+    updateUrgentKey();
   }
 
   function loop() {
@@ -310,6 +360,8 @@
         }
       }
     }
+    // update urgent key each frame (keeps highlight accurate)
+    updateUrgentKey();
     requestAnimationFrame(loop);
   }
 
@@ -326,7 +378,7 @@
   }
 
   function handleSubmit() {
-    const value = normalizeWord(box.value);
+    const value = normalizeWord(currentTyped);
     if (!value) {
       return;
     }
@@ -348,17 +400,94 @@
         speedMultiplier = Math.min(speedMultiplier + 0.3, 1 + baseSpeedSetting * 0.5);
         speedEl.textContent = formatSpeed(speedMultiplier);
       }
-      box.value = "";
+      currentTyped = "";
+      updateTypedDisplay();
     } else {
-      box.value = "";
+      currentTyped = "";
+      updateTypedDisplay();
     }
   }
 
-  box.addEventListener("keydown", event => {
-    if (event.key === "Enter") {
-      handleSubmit();
+  // Highlight the most crucial key: first letter of the lowest falling word
+  function updateUrgentKey() {
+    try {
+      // find the active word with largest y (closest to bottom)
+      let urgent = null;
+      for (const [id, obj] of active) {
+        if (!urgent || obj.y > urgent.y) urgent = obj;
+      }
+      const urgentLetter = urgent && urgent.word ? urgent.word[0].toUpperCase() : null;
+      // clear previous highlights
+      document.querySelectorAll('.key.key-urgent').forEach(k => k.classList.remove('key-urgent'));
+      if (!urgentLetter) return;
+      // Find matching key button and highlight
+      const keys = Array.from(document.querySelectorAll('.virtual-keyboard .key'));
+      for (const k of keys) {
+        if (k.textContent.trim().toUpperCase() === urgentLetter) {
+          k.classList.add('key-urgent');
+          break;
+        }
+      }
+    } catch (err) {
+      // ignore
     }
-  });
+  }
+
+  function updateTypedDisplay() {
+    if (typedDisplay) typedDisplay.textContent = currentTyped;
+  }
+
+  // Typing handlers (physical keyboard)
+  function typingKeyHandler(e) {
+    if (!running) return;
+    if (e.key === 'Enter') {
+      handleSubmit();
+      e.preventDefault();
+      return;
+    }
+    if (e.key === 'Backspace') {
+      currentTyped = currentTyped.slice(0, -1);
+      updateTypedDisplay();
+      e.preventDefault();
+      return;
+    }
+    if (e.key.length === 1) {
+      const ch = e.key.toUpperCase();
+      if (ch.match(/[A-Z ]/)) {
+        currentTyped += ch === ' ' ? ' ' : ch;
+        updateTypedDisplay();
+        e.preventDefault();
+      }
+    }
+  }
+
+  // Virtual keyboard clicks
+  if (virtualKeyboard) {
+    virtualKeyboard.addEventListener('click', (ev) => {
+      const target = ev.target;
+      if (!target || !target.classList.contains('key')) return;
+      const text = target.textContent.trim();
+      if (text === '⌫') {
+        currentTyped = currentTyped.slice(0, -1);
+        updateTypedDisplay();
+        return;
+      }
+      if (text === '↵') {
+        handleSubmit();
+        return;
+      }
+      if (text === 'SPACE') {
+        currentTyped += ' ';
+        updateTypedDisplay();
+        return;
+      }
+      // letter key
+      if (text.length === 1 && text.match(/[A-Z]/)) {
+        currentTyped += text;
+        updateTypedDisplay();
+      }
+    });
+  }
 
   function fit() {
     field.style.height = "420px"; //nice
@@ -373,8 +502,9 @@
     running = true;
     loop();
     // Focus the input box when game starts
-    const box = document.getElementById("typebox");
-    if (box) box.focus();
+    if (typedDisplay) typedDisplay.focus();
+    // attach typing handler for physical keyboard
+    window.addEventListener('keydown', typingKeyHandler);
     window.removeEventListener("keydown", startGameListener);
     window.removeEventListener("mousedown", startGameListener);
     window.removeEventListener("touchstart", startGameListener);
