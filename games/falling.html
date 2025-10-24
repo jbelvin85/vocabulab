@@ -226,7 +226,11 @@
 
   const fallingSettings = savedSettings?.games?.falling || {};
   const legacyWordLength = Number.isInteger(fallingSettings.wordLength) ? fallingSettings.wordLength : null;
-  const maxWordLengthSetting = Number.isInteger(fallingSettings.maxWordLength) ? fallingSettings.maxWordLength : (legacyWordLength ?? 6);
+  // If the user has explicitly set a maxWordLength, respect it. Otherwise do NOT
+  // apply a length filter so the selected vocabulary is used in full.
+  const maxWordLengthSetting = Number.isInteger(fallingSettings.maxWordLength)
+    ? fallingSettings.maxWordLength
+    : (Number.isInteger(legacyWordLength) ? legacyWordLength : null);
   const baseLives = Math.max(1, Math.min(Number(fallingSettings.lives) || 3, 9));
   // Default settings biased for younger users: slower speed, lower density
   let baseSpeedSetting = 1;
@@ -296,12 +300,14 @@
       saveFallingSettings();
     });
   }
-  const maxWordLength = Math.max(3, Math.min(maxWordLengthSetting, 12));
-
   let vocab = Array.from(new Set(cfg.words.map(normalizeWord))).filter(Boolean);
-  const filtered = vocab.filter(word => word.length <= maxWordLength);
-  if (filtered.length) {
-    vocab = filtered;
+  // Only apply a max-length filter when the user or legacy setting provides one.
+  if (Number.isFinite(Number(maxWordLengthSetting))) {
+    const maxWordLength = Math.max(3, Math.min(Number(maxWordLengthSetting), 1000));
+    const filtered = vocab.filter(word => word.length <= maxWordLength);
+    if (filtered.length) {
+      vocab = filtered;
+    }
   }
 
   const field = document.getElementById("playfield");
