@@ -154,21 +154,36 @@
   let baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
   let wordDensity = 2;
 
+  // Apply any saved falling settings (backwards-compatible keys)
+  if (fallingSettings && typeof fallingSettings === 'object') {
+    if (Number.isFinite(Number(fallingSettings.speed))) baseSpeedSetting = Number(fallingSettings.speed);
+    if (Number.isFinite(Number(fallingSettings.density))) wordDensity = Number(fallingSettings.density);
+    // recompute derived values
+    baseGravity = 0.3 + baseSpeedSetting * 0.15;
+    baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
+  }
+
   // Fall speed slider logic
   const fallSpeedSlider = document.getElementById('fallSpeedSlider');
   if (fallSpeedSlider) {
+    // initialize slider to current setting
+    fallSpeedSlider.value = String(baseSpeedSetting);
     fallSpeedSlider.addEventListener('input', () => {
       baseSpeedSetting = Number(fallSpeedSlider.value);
       baseGravity = 0.3 + baseSpeedSetting * 0.15;
       baseSpawnInterval = Math.max(58 - baseSpeedSetting * 3, 40);
+      saveFallingSettings();
     });
   }
 
   // Word density slider logic
   const wordDensitySlider = document.getElementById('wordDensitySlider');
   if (wordDensitySlider) {
+    // initialize slider to current setting
+    wordDensitySlider.value = String(wordDensity);
     wordDensitySlider.addEventListener('input', () => {
       wordDensity = Number(wordDensitySlider.value);
+      saveFallingSettings();
     });
   }
   const maxWordLength = Math.max(3, Math.min(maxWordLengthSetting, 12));
@@ -184,6 +199,21 @@
   const livesEl = document.getElementById("lives");
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
+
+  // Save/load helper for falling settings
+  function saveFallingSettings() {
+    try {
+      const raw = localStorage.getItem('wordGamesSettings');
+      const root = raw ? JSON.parse(raw) : {};
+      root.games = root.games || {};
+      root.games.falling = root.games.falling || {};
+      root.games.falling.speed = baseSpeedSetting;
+      root.games.falling.density = wordDensity;
+      localStorage.setItem('wordGamesSettings', JSON.stringify(root));
+    } catch (err) {
+      console.warn('Could not save falling settings', err);
+    }
+  }
 
   let lives = baseLives;
   let score = 0;
