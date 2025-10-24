@@ -86,12 +86,17 @@
     <div style="margin-bottom:18px;">
       <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">Fall Speed:
         <input type="range" id="fallSpeedSlider" min="1" max="10" value="1" style="flex:1;">
+        <span id="fallSpeedValue" style="min-width:36px;text-align:center;font-weight:normal;">1</span>
       </label>
     </div>
     <div>
       <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">Word Density:
         <input type="range" id="wordDensitySlider" min="1" max="10" value="2" style="flex:1;">
+        <span id="wordDensityValue" style="min-width:36px;text-align:center;font-weight:normal;">2</span>
       </label>
+    </div>
+    <div style="margin-top:12px;">
+      <button id="resetDefaultsBtn" class="icon" style="width:100%;">Reset to defaults</button>
     </div>
   </div>
   <div class="drawer-footer"><a href="../index.html"><button class="icon" style="width: 100%; justify-content: flex-start;">🏠 Home</button></a></div>
@@ -168,8 +173,11 @@
   if (fallSpeedSlider) {
     // initialize slider to current setting
     fallSpeedSlider.value = String(baseSpeedSetting);
+    const fallSpeedValueEl = document.getElementById('fallSpeedValue');
+    if (fallSpeedValueEl) fallSpeedValueEl.textContent = String(baseSpeedSetting);
     fallSpeedSlider.addEventListener('input', () => {
       baseSpeedSetting = Number(fallSpeedSlider.value);
+      if (fallSpeedValueEl) fallSpeedValueEl.textContent = String(baseSpeedSetting);
       baseGravity = 0.3 + baseSpeedSetting * 0.15;
       baseSpawnInterval = Math.max(58 - baseSpeedSetting * 3, 40);
       saveFallingSettings();
@@ -181,8 +189,33 @@
   if (wordDensitySlider) {
     // initialize slider to current setting
     wordDensitySlider.value = String(wordDensity);
+    const wordDensityValueEl = document.getElementById('wordDensityValue');
+    if (wordDensityValueEl) wordDensityValueEl.textContent = String(wordDensity);
     wordDensitySlider.addEventListener('input', () => {
       wordDensity = Number(wordDensitySlider.value);
+      if (wordDensityValueEl) wordDensityValueEl.textContent = String(wordDensity);
+      saveFallingSettings();
+    });
+  }
+
+  // Reset defaults button
+  const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+  if (resetDefaultsBtn) {
+    resetDefaultsBtn.addEventListener('click', () => {
+      baseSpeedSetting = 1;
+      wordDensity = 2;
+      baseGravity = 0.3 + baseSpeedSetting * 0.15;
+      baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
+      if (fallSpeedSlider) {
+        fallSpeedSlider.value = String(baseSpeedSetting);
+        const el = document.getElementById('fallSpeedValue');
+        if (el) el.textContent = String(baseSpeedSetting);
+      }
+      if (wordDensitySlider) {
+        wordDensitySlider.value = String(wordDensity);
+        const el = document.getElementById('wordDensityValue');
+        if (el) el.textContent = String(wordDensity);
+      }
       saveFallingSettings();
     });
   }
