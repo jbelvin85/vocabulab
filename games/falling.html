@@ -97,27 +97,29 @@
     .virtual-keyboard {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-top: 10px;
+      gap: 4px;
+      margin-top: 8px;
       width: 100%;
       box-sizing: border-box;
+      max-width: 720px;
+      overflow: hidden;
     }
-    .vk-row { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
+    .vk-row { display:flex; gap:4px; justify-content:space-between; flex-wrap:wrap; }
+    .vk-row .key { flex: 1 1 0; }
     .key {
       background: #f3f4f6;
       border-radius: 6px;
-      padding: 8px 10px;
+      padding: 6px 6px;
       text-align: center;
       cursor: pointer;
       user-select: none;
       border: 1px solid rgba(0,0,0,0.06);
       font-weight: 600;
-      min-width: 34px;
+      min-width: 26px;
       box-sizing: border-box;
+      line-height: 1;
+      font-size: 0.95rem;
     }
-    .key.key-wide { min-width: 64px; }
-    .key.key-enter { min-width: 72px; }
-    .key.key-back { min-width: 64px; }
     .key.key-urgent { background: #fde68a; box-shadow: 0 0 0 3px rgba(253,230,138,0.18); }
     /* falling word letter highlights */
     .falling-word .fw-letter { display:inline-block; padding:0 2px; }
@@ -184,11 +186,7 @@
         <div class="vk-row" id="vkRow3">
           <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div><div class="key">N</div><div class="key">M</div>
         </div>
-        <div class="vk-row" style="margin-top:8px;">
-          <div class="key key-back">⌫</div>
-          <div class="key key-wide">SPACE</div>
-          <div class="key key-enter">↵</div>
-        </div>
+        <!-- Bottom control row removed to save space (no backspace/space/enter) -->
         </div>
         <div class="small">Type the highlighted letter. Correct letters advance to the next. Words are removed when complete.</div>
       </div>
@@ -531,10 +529,11 @@
     virtualKeyboard.addEventListener('click', (ev) => {
       const target = ev.target;
       if (!target || !target.classList.contains('key')) return;
-      const text = target.textContent.trim();
-      if (text === '⌫' || text === '↵') return; // back/enter not used in per-letter mode
-      if (text === 'SPACE') { consumeTypedLetter(' '); return; }
-      if (text.length === 1 && text.match(/[A-Z]/)) { consumeTypedLetter(text); }
+      const text = target.textContent.trim().toUpperCase();
+      // Only single A-Z keys are used in per-letter mode now
+      if (text.length === 1 && text.match(/^[A-Z]$/)) {
+        consumeTypedLetter(text);
+      }
     });
   }
 
