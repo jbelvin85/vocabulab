@@ -78,16 +78,20 @@
     /* play area header moved inside playfield to save space */
     .playfield-header {
       position: absolute;
-      top: 8px;
+      bottom: 8px;
       left: 8px;
       display: flex;
-      gap: 12px;
-      z-index: 4;
-      align-items: center;
-      background: rgba(255,255,255,0.85);
-      padding: 6px 10px;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 60;
+      align-items: flex-start;
+      background: rgba(255,255,255,0.92);
+      padding: 8px;
       border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      max-width: 220px;
+      min-width: 120px;
+      pointer-events: auto;
     }
     .type-display { display:none; }
     .virtual-keyboard {
@@ -158,9 +162,8 @@
           <div class="badge">Lives: <span id="lives">3</span></div>
           <div class="badge">Score: <span id="score">0</span></div>
           <div class="badge">Speed: <span id="speed">1x</span></div>
-          <div style="margin-left:8px;display:flex;gap:8px;align-items:center;">
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
             <button id="pauseBtn" class="icon">⏸️ Pause</button>
-            <a href="../index.html"><button class="icon">🏠 Home</button></a>
           </div>
         </div>
       </div>
