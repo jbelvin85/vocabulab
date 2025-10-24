@@ -85,12 +85,12 @@
     <h3>Game Options</h3>
     <div style="margin-bottom:18px;">
       <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">Fall Speed:
-        <input type="range" id="fallSpeedSlider" min="1" max="10" value="2" style="flex:1;">
+        <input type="range" id="fallSpeedSlider" min="1" max="10" value="1" style="flex:1;">
       </label>
     </div>
     <div>
       <label style="display:flex;align-items:center;gap:8px;font-weight:bold;">Word Density:
-        <input type="range" id="wordDensitySlider" min="1" max="10" value="5" style="flex:1;">
+        <input type="range" id="wordDensitySlider" min="1" max="10" value="2" style="flex:1;">
       </label>
     </div>
   </div>
@@ -148,10 +148,11 @@
   const legacyWordLength = Number.isInteger(fallingSettings.wordLength) ? fallingSettings.wordLength : null;
   const maxWordLengthSetting = Number.isInteger(fallingSettings.maxWordLength) ? fallingSettings.maxWordLength : (legacyWordLength ?? 6);
   const baseLives = Math.max(1, Math.min(Number(fallingSettings.lives) || 3, 9));
-  let baseSpeedSetting = 2;
+  // Default settings biased for younger users: slower speed, lower density
+  let baseSpeedSetting = 1;
   let baseGravity = 0.3 + baseSpeedSetting * 0.15;
-  let baseSpawnInterval = Math.max(58 - baseSpeedSetting * 3, 40);
-  let wordDensity = 5;
+  let baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
+  let wordDensity = 2;
 
   // Fall speed slider logic
   const fallSpeedSlider = document.getElementById('fallSpeedSlider');
@@ -200,6 +201,10 @@
   }
 
   function spawn() {
+    // Do not spawn more than maxActive words based on density
+    const maxActive = Math.max(2, Math.floor(wordDensity * 1.5));
+    if (active.size >= maxActive) return;
+
     const word = vocab[Math.floor(Math.random() * vocab.length)];
     if (!word) {
       return;
@@ -222,7 +227,9 @@
       return;
     }
     tick++;
-    const spawnRate = Math.max(baseSpawnInterval - Math.floor((speedMultiplier - 1) * 8) - Math.floor(score / 4), 22);
+    // spawnRate increases (less frequent) when density is lower
+    const densityOffset = Math.floor((5 - wordDensity) * 6); // density 5 -> 0, density 1 -> +24
+    const spawnRate = Math.max(baseSpawnInterval - Math.floor((speedMultiplier - 1) * 8) - Math.floor(score / 4) + densityOffset, 22);
     if (tick % spawnRate === 0) {
       spawn();
     }
