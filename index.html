@@ -37,6 +37,38 @@
       margin-bottom: 10px !important;
       text-shadow: none !important;
     }
+    /* games list (left column) should scroll instead of expanding the page */
+    .games-list {
+      max-height: calc(100vh - 160px);
+      overflow: auto;
+      padding-right: 8px;
+      box-sizing: border-box;
+    }
+    .games-list .game-button { margin-bottom: 6px; }
+    /* collapsible description in the detail panel */
+    #panelDescription {
+      max-height: 6.5rem; /* collapsed height ~2-3 lines */
+      overflow: hidden;
+      transition: max-height 260ms ease, opacity 180ms ease;
+      opacity: 0.95;
+      position: relative;
+    }
+    #panelDescription.expanded {
+      max-height: 600px; /* large enough for longer descriptions */
+      opacity: 1;
+    }
+    /* subtle fade-bottom to hint there's more when collapsed */
+    #panelDescription::after {
+      content: '';
+      display: block;
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 2.2rem;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(255,255,255,0), rgba(255,255,255,0.96));
+      transition: opacity 220ms ease;
+    }
+    #panelDescription.expanded::after { opacity: 0; }
   </style>
 
 </head>
@@ -132,6 +164,26 @@
     });
     // initial select
     if (buttons.length) select(buttons[0]);
+
+    // Info/expand toggle
+    const infoBtnEl = document.getElementById('infoBtn');
+    const panelDescEl = document.getElementById('panelDescription');
+    if (infoBtnEl && panelDescEl) {
+      infoBtnEl.addEventListener('click', () => {
+        const expanded = panelDescEl.classList.toggle('expanded');
+        infoBtnEl.textContent = expanded ? 'Show less' : 'ℹ️ Info';
+      });
+    }
+    // Collapse description when switching games
+    const origSelect = select;
+    function selectAndCollapse(btn){
+      origSelect(btn);
+      if (panelDescEl) panelDescEl.classList.remove('expanded');
+      if (infoBtnEl) infoBtnEl.textContent = 'ℹ️ Info';
+    }
+    // rewire click handlers to use selectAndCollapse
+    buttons.forEach(b => b.removeEventListener && b.removeEventListener('click', () => {}));
+    buttons.forEach(b => b.addEventListener('click', (e) => { e.preventDefault(); selectAndCollapse(b); }));
   })();
 </script>
 </body>
