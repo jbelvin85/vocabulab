@@ -201,7 +201,8 @@
   const baseLives = Math.max(1, Math.min(Number(fallingSettings.lives) || 3, 9));
   // Default settings biased for younger users: slower speed, lower density
   let baseSpeedSetting = 1;
-  let baseGravity = 0.3 + baseSpeedSetting * 0.15;
+  // gentler gravity for younger users
+  let baseGravity = 0.18 + baseSpeedSetting * 0.08;
   let baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
   let wordDensity = 2;
 
@@ -209,8 +210,8 @@
   if (fallingSettings && typeof fallingSettings === 'object') {
     if (Number.isFinite(Number(fallingSettings.speed))) baseSpeedSetting = Number(fallingSettings.speed);
     if (Number.isFinite(Number(fallingSettings.density))) wordDensity = Number(fallingSettings.density);
-    // recompute derived values
-    baseGravity = 0.3 + baseSpeedSetting * 0.15;
+    // recompute derived values (use gentler gravity)
+    baseGravity = 0.18 + baseSpeedSetting * 0.08;
     baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
   }
 
@@ -224,7 +225,8 @@
     fallSpeedSlider.addEventListener('input', () => {
       baseSpeedSetting = Number(fallSpeedSlider.value);
       if (fallSpeedValueEl) fallSpeedValueEl.textContent = String(baseSpeedSetting);
-      baseGravity = 0.3 + baseSpeedSetting * 0.15;
+      // recompute derived values (gentler gravity)
+      baseGravity = 0.18 + baseSpeedSetting * 0.08;
       baseSpawnInterval = Math.max(58 - baseSpeedSetting * 3, 40);
       saveFallingSettings();
     });
@@ -248,10 +250,10 @@
   const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
   if (resetDefaultsBtn) {
     resetDefaultsBtn.addEventListener('click', () => {
-      baseSpeedSetting = 1;
-      wordDensity = 2;
-      baseGravity = 0.3 + baseSpeedSetting * 0.15;
-      baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
+  baseSpeedSetting = 1;
+  wordDensity = 2;
+  baseGravity = 0.18 + baseSpeedSetting * 0.08;
+  baseSpawnInterval = Math.max(68 - baseSpeedSetting * 3, 48);
       if (fallSpeedSlider) {
         fallSpeedSlider.value = String(baseSpeedSetting);
         const el = document.getElementById('fallSpeedValue');
@@ -329,7 +331,8 @@
     const id = nextId++;
     element.dataset.id = String(id);
     field.appendChild(element);
-    const velocity = baseGravity + (speedMultiplier - 1) * 0.2 + Math.random() * 0.12;
+  // gentler velocity: lower contribution from speedMultiplier and less jitter
+  const velocity = baseGravity + (speedMultiplier - 1) * 0.12 + Math.random() * 0.06;
     active.set(id, { word, el: element, y: -30, speed: velocity });
     // Update urgent key highlight when new word spawns
     updateUrgentKey();
@@ -397,7 +400,8 @@
       score++;
       scoreEl.textContent = String(score);
       if (score > 0 && score % 6 === 0) {
-        speedMultiplier = Math.min(speedMultiplier + 0.3, 1 + baseSpeedSetting * 0.5);
+        // ramp up speed more slowly to keep the game approachable
+        speedMultiplier = Math.min(speedMultiplier + 0.12, 1 + baseSpeedSetting * 0.35);
         speedEl.textContent = formatSpeed(speedMultiplier);
       }
       currentTyped = "";
