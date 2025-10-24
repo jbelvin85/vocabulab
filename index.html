@@ -43,28 +43,51 @@
 <body class="kid-friendly">
   <main class="main-content">
 
+    <div class="landing-container" style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+      <aside class="games-list" style="flex:0 0 300px;min-width:220px;">
+        <h2 style="margin:0 0 12px 8px;font-size:1.25rem;">Games</h2>
+        <nav style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#" class="game-button" data-game="games/wordsearch.html">
+            <span class="icon">🔍</span>
+            <span class="game-label">Word Search</span>
+          </a>
+          <a href="#" class="game-button" data-game="games/crossword.html">
+            <span class="icon">📝</span>
+            <span class="game-label">Crossword</span>
+          </a>
+          <a href="#" class="game-button" data-game="games/anagram.html">
+            <span class="icon">🔄</span>
+            <span class="game-label">Anagrams</span>
+          </a>
+          <a href="#" class="game-button" data-game="games/falling.html">
+            <span class="icon">💧</span>
+            <span class="game-label">Falling Words</span>
+          </a>
+          <a href="#" class="game-button" data-game="games/snake.html">
+            <span class="icon">🐍</span>
+            <span class="game-label">Word Snake</span>
+          </a>
+        </nav>
+      </aside>
 
-    <div class="game-grid">
-      <a href="#" class="game-button" data-game="games/wordsearch.html">
-        <span class="icon">🔍</span>
-        Word Search
-      </a>
-      <a href="#" class="game-button" data-game="games/crossword.html">
-        <span class="icon">📝</span>
-        Crossword
-      </a>
-      <a href="#" class="game-button" data-game="games/anagram.html">
-        <span class="icon">🔄</span>
-        Anagrams
-      </a>
-      <a href="#" class="game-button" data-game="games/falling.html">
-        <span class="icon">💧</span>
-        Falling Words
-      </a>
-      <a href="#" class="game-button" data-game="games/snake.html">
-        <span class="icon">🐍</span>
-        Word Snake
-      </a>
+      <section class="game-panel" style="flex:1 1 400px;min-width:240px;background:linear-gradient(180deg,#fff,#fbfbff);padding:18px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.04);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div id="panelIcon" style="font-size:2.4rem">🔍</div>
+          <div>
+            <h2 id="panelTitle" style="margin:0;font-size:1.6rem">Word Search</h2>
+            <div id="panelSubtitle" style="color:#666;font-size:0.95rem;margin-top:4px">Find hidden words in a grid — great for pattern recognition and vocabulary practice.</div>
+          </div>
+        </div>
+
+        <div id="panelDescription" style="margin-top:16px;color:#333;line-height:1.5;">
+          Word Search places words in a grid horizontally, vertically and diagonally. Use your eyes (or your cursor) to find all the words before time runs out.
+        </div>
+
+        <div style="margin-top:18px;display:flex;gap:12px;align-items:center;">
+          <a id="startGameBtn" class="primary" href="games/wordsearch.html">Start Game</a>
+          <button id="infoBtn" class="icon">ℹ️ Info</button>
+        </div>
+      </section>
     </div>
   </main>
 
@@ -76,5 +99,40 @@
   </div>
 
 <script src="renderer.js" type="module" defer></script>
+<script>
+  // Lightweight landing page wiring: update panel when a game is selected
+  (function(){
+    const info = {
+      'games/wordsearch.html': { icon:'🔍', title:'Word Search', subtitle:'Find hidden words in a grid', desc:'Word Search places words in a grid horizontally, vertically and diagonally. Use your eyes (or your cursor) to find all the words before time runs out.' },
+      'games/crossword.html': { icon:'📝', title:'Crossword', subtitle:'Solve clues to fill the grid', desc:'Crossword presents clues and an empty grid. Use the hints to fill in words across and down.' },
+      'games/anagram.html': { icon:'🔄', title:'Anagrams', subtitle:'Unscramble letters to form words', desc:'Anagrams gives you a shuffled set of letters — reorder them to form valid words.' },
+      'games/falling.html': { icon:'💧', title:'Falling Words', subtitle:'Type highlighted letters to save falling words', desc:'Letters fall from the top. Type the highlighted letter(s) to complete and save words before they hit the bottom.' },
+      'games/snake.html': { icon:'🐍', title:'Word Snake', subtitle:'Connect letters to grow the snake', desc:'Move through letters to connect and form words while growing the snake. Avoid running into yourself!' }
+    };
+    const buttons = Array.from(document.querySelectorAll('.games-list .game-button'));
+    const panelIcon = document.getElementById('panelIcon');
+    const panelTitle = document.getElementById('panelTitle');
+    const panelSubtitle = document.getElementById('panelSubtitle');
+    const panelDescription = document.getElementById('panelDescription');
+    const startBtn = document.getElementById('startGameBtn');
+
+    function select(btn){
+      buttons.forEach(b => b.classList.toggle('selected', b === btn));
+      const path = btn.dataset.game;
+      const meta = info[path] || {};
+      panelIcon.textContent = meta.icon || '';
+      panelTitle.textContent = meta.title || btn.textContent.trim();
+      panelSubtitle.textContent = meta.subtitle || '';
+      panelDescription.textContent = meta.desc || '';
+      startBtn.href = path || '#';
+    }
+
+    buttons.forEach(b => {
+      b.addEventListener('click', (e) => { e.preventDefault(); select(b); });
+    });
+    // initial select
+    if (buttons.length) select(buttons[0]);
+  })();
+</script>
 </body>
 </html>
