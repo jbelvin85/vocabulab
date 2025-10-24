@@ -75,22 +75,30 @@
         display: none;
       }
     }
-    .type-display {
-      min-height: 36px;
-      border: 1px solid var(--border);
+    /* play area header moved inside playfield to save space */
+    .playfield-header {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      display: flex;
+      gap: 12px;
+      z-index: 4;
+      align-items: center;
+      background: rgba(255,255,255,0.85);
+      padding: 6px 10px;
       border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 1rem;
-      background: #fff;
-      box-shadow: inset 0 1px 0 rgba(0,0,0,0.02);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
+    .type-display { display:none; }
     .virtual-keyboard {
-      display: grid;
+      display: flex;
+      flex-direction: column;
       gap: 6px;
-      grid-template-columns: repeat(10, 1fr);
       margin-top: 10px;
+      width: 100%;
+      box-sizing: border-box;
     }
-    .vk-row { grid-column: 1 / -1; display:flex; gap:6px; justify-content:center; }
+    .vk-row { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
     .key {
       background: #f3f4f6;
       border-radius: 6px;
@@ -100,11 +108,22 @@
       user-select: none;
       border: 1px solid rgba(0,0,0,0.06);
       font-weight: 600;
+      min-width: 34px;
+      box-sizing: border-box;
     }
-    .key.key-wide { flex: 0 0 80px; }
-    .key.key-enter { flex: 0 0 90px; }
-    .key.key-back { flex: 0 0 80px; }
+    .key.key-wide { min-width: 64px; }
+    .key.key-enter { min-width: 72px; }
+    .key.key-back { min-width: 64px; }
     .key.key-urgent { background: #fde68a; box-shadow: 0 0 0 3px rgba(253,230,138,0.18); }
+    /* falling word letter highlights */
+    .falling-word .fw-letter { display:inline-block; padding:0 2px; }
+    .falling-word.fw-active { background: rgba(99,102,241,0.06); border-radius:6px; padding:2px 6px; }
+    .falling-word .fw-current { background:#fde68a; border-radius:4px; padding:0 2px; }
+    /* layout responsiveness */
+    .game-column { display:flex; flex-direction:column; gap:8px; }
+    @media (min-width: 720px) {
+      .virtual-keyboard { max-width: 520px; margin:10px auto 0 auto; }
+    }
   </style>
 </head>
 <body>
@@ -146,8 +165,14 @@
       </div>
     </div>
     <div class="card" style="margin-top:12px"><div class="card-body">
-      <div id="typedDisplay" class="type-display" tabindex="0" aria-label="Typed word" role="textbox"></div>
-      <div class="virtual-keyboard" id="virtualKeyboard" aria-hidden="false">
+      <div class="game-column">
+        <div id="playfieldHeader" class="playfield-header" aria-hidden="false">
+          <div class="badge">Lives: <span id="lives">3</span></div>
+          <div class="badge">Score: <span id="score">0</span></div>
+          <div class="badge">Speed: <span id="speed">1x</span></div>
+        </div>
+        <div style="min-height:32px"></div>
+        <div class="virtual-keyboard" id="virtualKeyboard" aria-hidden="false">
         <div class="vk-row" id="vkRow1">
           <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div><div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
         </div>
@@ -162,8 +187,9 @@
           <div class="key key-wide">SPACE</div>
           <div class="key key-enter">↵</div>
         </div>
+        </div>
+        <div class="small">Type the highlighted letter. Correct letters advance to the next. Words are removed when complete.</div>
       </div>
-      <div class="small">Hit Enter to submit. Words speed up as you score. Missed words cost a life.</div>
     </div></div>
   </div>
   <!-- Drawer is now only outside the container -->
@@ -276,9 +302,9 @@
   }
 
   const field = document.getElementById("playfield");
-  const typedDisplay = document.getElementById("typedDisplay");
   const virtualKeyboard = document.getElementById("virtualKeyboard");
-  let currentTyped = "";
+  let currentTargetId = null; // id of the active urgent word
+  // track progress per active entry: active map will hold {word, el, y, speed, progress}
   const livesEl = document.getElementById("lives");
   const scoreEl = document.getElementById("score");
   const speedEl = document.getElementById("speed");
@@ -322,9 +348,10 @@
     if (!word) {
       return;
     }
-    const element = document.createElement("div");
-    element.className = "falling-word";
-    element.textContent = word;
+  const element = document.createElement("div");
+  element.className = "falling-word";
+  // render each letter in a span so we can highlight the current letter
+  element.innerHTML = Array.from(word).map(ch => `<span class="fw-letter">${ch}</span>`).join("");
     const x = Math.max(8, Math.floor(Math.random() * Math.max(field.clientWidth - 80, 40)));
     element.style.left = `${x}px`;
     element.style.top = "-30px";
@@ -332,8 +359,8 @@
     element.dataset.id = String(id);
     field.appendChild(element);
   // gentler velocity: lower contribution from speedMultiplier and less jitter
-  const velocity = baseGravity + (speedMultiplier - 1) * 0.12 + Math.random() * 0.06;
-    active.set(id, { word, el: element, y: -30, speed: velocity });
+    const velocity = baseGravity + (speedMultiplier - 1) * 0.12 + Math.random() * 0.06;
+    active.set(id, { word, el: element, y: -30, speed: velocity, progress: 0 });
     // Update urgent key highlight when new word spawns
     updateUrgentKey();
   }
@@ -420,7 +447,9 @@
       for (const [id, obj] of active) {
         if (!urgent || obj.y > urgent.y) urgent = obj;
       }
-      const urgentLetter = urgent && urgent.word ? urgent.word[0].toUpperCase() : null;
+      const urgentLetter = urgent && urgent.word ? urgent.word[ urgent.progress || 0 ].toUpperCase() : null;
+      // set current target id
+      currentTargetId = urgent ? Number([...active].find(([k,v]) => v === urgent)[0]) : null;
       // clear previous highlights
       document.querySelectorAll('.key.key-urgent').forEach(k => k.classList.remove('key-urgent'));
       if (!urgentLetter) return;
@@ -432,64 +461,78 @@
           break;
         }
       }
+      // mark active falling word visually and highlight current letter
+      document.querySelectorAll('.falling-word.fw-active').forEach(el => el.classList.remove('fw-active'));
+      if (urgent && urgent.el) urgent.el.classList.add('fw-active');
+      // clear current letter markers
+      document.querySelectorAll('.falling-word .fw-current').forEach(el => el.classList.remove('fw-current'));
+      if (urgent && urgent.el) {
+        const idx = urgent.progress || 0;
+        const span = urgent.el.querySelectorAll('.fw-letter')[idx];
+        if (span) span.classList.add('fw-current');
+      }
     } catch (err) {
       // ignore
     }
   }
 
-  function updateTypedDisplay() {
-    if (typedDisplay) typedDisplay.textContent = currentTyped;
+  // Typing handlers (physical keyboard & virtual keyboard) — per-letter mode
+  function consumeTypedLetter(ch) {
+    // ch should be uppercase A-Z or space
+    if (!running) return;
+    if (!currentTargetId) return; // nothing to type
+    const entry = active.get(currentTargetId);
+    if (!entry) return;
+    const expected = (entry.word || '')[entry.progress || 0];
+    if (!expected) return;
+    if (ch === expected.toUpperCase()) {
+      // correct — advance
+      entry.progress = (entry.progress || 0) + 1;
+      // update visuals
+      updateUrgentKey();
+      // completed word
+      if (entry.progress >= entry.word.length) {
+        entry.el.remove();
+        active.delete(currentTargetId);
+        currentTargetId = null;
+        score++;
+        scoreEl.textContent = String(score);
+      }
+    } else {
+      // incorrect key — simple feedback: flash current letter
+      if (entry.el) {
+        const span = entry.el.querySelectorAll('.fw-letter')[entry.progress || 0];
+        if (span) {
+          span.classList.add('fw-wrong');
+          setTimeout(() => span.classList.remove('fw-wrong'), 300);
+        }
+      }
+    }
   }
 
-  // Typing handlers (physical keyboard)
+  // physical keyboard
   function typingKeyHandler(e) {
     if (!running) return;
-    if (e.key === 'Enter') {
-      handleSubmit();
-      e.preventDefault();
-      return;
-    }
-    if (e.key === 'Backspace') {
-      currentTyped = currentTyped.slice(0, -1);
-      updateTypedDisplay();
-      e.preventDefault();
-      return;
-    }
+    if (e.key === 'Enter' || e.key === '\n') { e.preventDefault(); return; }
+    if (e.key === 'Backspace') { e.preventDefault(); return; }
     if (e.key.length === 1) {
       const ch = e.key.toUpperCase();
       if (ch.match(/[A-Z ]/)) {
-        currentTyped += ch === ' ' ? ' ' : ch;
-        updateTypedDisplay();
+        consumeTypedLetter(ch === ' ' ? ' ' : ch);
         e.preventDefault();
       }
     }
   }
 
-  // Virtual keyboard clicks
+  // virtual keyboard clicks
   if (virtualKeyboard) {
     virtualKeyboard.addEventListener('click', (ev) => {
       const target = ev.target;
       if (!target || !target.classList.contains('key')) return;
       const text = target.textContent.trim();
-      if (text === '⌫') {
-        currentTyped = currentTyped.slice(0, -1);
-        updateTypedDisplay();
-        return;
-      }
-      if (text === '↵') {
-        handleSubmit();
-        return;
-      }
-      if (text === 'SPACE') {
-        currentTyped += ' ';
-        updateTypedDisplay();
-        return;
-      }
-      // letter key
-      if (text.length === 1 && text.match(/[A-Z]/)) {
-        currentTyped += text;
-        updateTypedDisplay();
-      }
+      if (text === '⌫' || text === '↵') return; // back/enter not used in per-letter mode
+      if (text === 'SPACE') { consumeTypedLetter(' '); return; }
+      if (text.length === 1 && text.match(/[A-Z]/)) { consumeTypedLetter(text); }
     });
   }
 
@@ -506,7 +549,8 @@
     running = true;
     loop();
     // Focus the input box when game starts
-    if (typedDisplay) typedDisplay.focus();
+    const startFocus = document.getElementById('playfieldHeader') || document.getElementById('playfield');
+    if (startFocus) startFocus.focus && startFocus.focus();
     // attach typing handler for physical keyboard
     window.addEventListener('keydown', typingKeyHandler);
     window.removeEventListener("keydown", startGameListener);
