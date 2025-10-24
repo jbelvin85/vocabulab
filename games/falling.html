@@ -106,6 +106,8 @@
       max-height: calc(34vh);
       overflow-y: auto;
       padding-right: 4px;
+      transform-origin: top center;
+      transition: transform 160ms ease, max-height 160ms ease;
     }
     .vk-row { display:flex; gap:4px; justify-content:space-between; flex-wrap:wrap; }
     .vk-row .key { flex: 1 1 0; }
@@ -555,6 +557,8 @@
     // Focus the input box when game starts
     const startFocus = document.getElementById('playfieldHeader') || document.getElementById('playfield');
     if (startFocus) startFocus.focus && startFocus.focus();
+    // ensure keyboard sizing is adjusted now that layout may have changed
+    adjustKeyboardHeight();
     // attach typing handler for physical keyboard
     window.addEventListener('keydown', typingKeyHandler);
     window.removeEventListener("keydown", startGameListener);
@@ -576,15 +580,27 @@
   // Dynamically adjust the virtual keyboard max-height to fit the viewport.
   function adjustKeyboardHeight() {
     try {
-      if (!virtualKeyboard) return;
-      // get distance from top of keyboard to bottom of viewport
-      const kbRect = virtualKeyboard.getBoundingClientRect();
+      if (!virtualKeyboard || !field) return;
+      // Preferred: compute available space from the bottom of the playfield to the viewport bottom
+      const pfRect = field.getBoundingClientRect();
       const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-      // compute safe space: space below keyboard should be small; we want keyboard to fit
-      const availableBelow = viewportHeight - kbRect.top - 12; // 12px padding
-      // alternatively, ensure keyboard does not exceed a fraction of viewport
-      const safeMax = Math.max( Math.min(availableBelow, Math.round(window.innerHeight * 0.42)), 120 );
-      virtualKeyboard.style.maxHeight = safeMax + 'px';
+      // space below playfield (at least a small padding)
+      let availableBelowPlayfield = Math.floor(viewportHeight - pfRect.bottom - 8);
+      if (availableBelowPlayfield < 80) {
+        // fallback to a fraction of viewport when playfield occupies most of screen
+        availableBelowPlayfield = Math.max( Math.floor(window.innerHeight * 0.30), 80 );
+      }
+      // measure the keyboard's unscaled full height
+      const unscaledHeight = virtualKeyboard.scrollHeight || Math.max(120, availableBelowPlayfield);
+      // if the keyboard is taller than available, scale it down but not below minScale
+      const minScale = 0.65;
+      let scale = 1;
+      if (unscaledHeight > availableBelowPlayfield) {
+        scale = Math.max(minScale, availableBelowPlayfield / unscaledHeight);
+      }
+      // apply transform and set a matching max-height so layout area matches the scaled size
+      virtualKeyboard.style.transform = `scale(${scale})`;
+      virtualKeyboard.style.maxHeight = Math.round(unscaledHeight * scale) + 'px';
       virtualKeyboard.style.overflowY = 'auto';
     } catch (err) {
       // ignore
